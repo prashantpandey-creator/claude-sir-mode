@@ -100,6 +100,28 @@ When the user provides an API key or secret, don't ask them to perform manual da
 
 ## How to use this in your project
 
+### Quickest path — one slash command
+
+Copy the install skill to your global Claude Code skills directory:
+
+```bash
+mkdir -p ~/.claude/skills
+curl -o ~/.claude/skills/orchestrator-first.md \
+  https://raw.githubusercontent.com/prashantpandey-creator/orchestrator-first/main/skills/orchestrator-first.md
+```
+
+Then in any Claude Code session, in the project you want to install into:
+
+```
+/orchestrator-first
+```
+
+Claude will copy the tools, wire the hook, patch `settings.local.json`, and confirm everything works. One command, any project.
+
+---
+
+### Manual path — three steps
+
 ### Step 1 — Drop in the rules
 
 ```bash
@@ -173,6 +195,8 @@ cp -r tools/python/_template your-project/tools/your_tool_name
 AGENTS.md                     # The rules — drop into .claude/rules/
 hooks/
   session-start.sh            # SessionStart hook — enforcement layer
+skills/
+  orchestrator-first.md       # Install skill — copy to ~/.claude/skills/, then /orchestrator-first
 tools/
   python/
     _template/                # Copy this to build a new tool
