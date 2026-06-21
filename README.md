@@ -70,7 +70,7 @@ When the user provides an API key or secret, don't ask them to perform manual da
 
 **Cost:** sub-second. **Payoff:** prevents acting on a stale map before any other pattern applies.
 
-→ See [`tools/python/doc_path_audit/`](tools/python/doc_path_audit/)
+→ [`tools/python/doc_path_audit/`](tools/python/doc_path_audit/)
 
 ---
 
@@ -84,9 +84,7 @@ When the user provides an API key or secret, don't ask them to perform manual da
 - **Verdict-predicate-before-candidates** — tests-first applied to adjudication, not code. The script declares the winner; the agent's context never sees the K competing streams.
 - **Silently-discarded speculative-next-task** — when P(next user ask) ≈ 1.0 and the predicate already exists, run the next task in a background worktree while the user reads the current response. Hit: instant delivery. Miss: `git worktree remove`, never shown.
 
-**Proven on real data:** PuranGPT's streaming-renderer saga — 4 commits, ~3 hours, serial revert loop — was adjudicated by the verdict script in milliseconds. It independently picked the same renderer the human reverted to.
-
-→ See [`tools/js/stream_verdict/`](tools/js/stream_verdict/)
+**Proven on real data:** the proof-of-concept in [`examples/`](examples/purangpt-session.md) modeled a real 4-commit, 3-hour serial revert loop and adjudicated it in milliseconds — picking the same winner the human eventually reverted to.
 
 ---
 
@@ -100,103 +98,77 @@ When the user provides an API key or secret, don't ask them to perform manual da
 
 ---
 
-## How to use this in your Claude Code project
+## How to use this in your project
 
-### Option A — Drop in the AGENTS.md (recommended)
+### Option A — Drop in AGENTS.md (recommended)
 
-Copy [`AGENTS.md`](AGENTS.md) into your project at:
+Copy [`AGENTS.md`](AGENTS.md) into your project:
 ```
 your-project/.claude/rules/AGENTS.md
 ```
 
-Claude Code auto-loads files under `.claude/rules/` at the same priority as `CLAUDE.md`. The rules apply to every session whose working directory is at or under your project root.
+Claude Code auto-loads files under `.claude/rules/` at the same priority as `CLAUDE.md`. The rules apply to every session at or under your project root.
 
-If your project path contains spaces, use a symlink:
+If your project path contains spaces, symlink instead:
 ```bash
-# from your project root
 mkdir -p .claude/rules
 ln -s "$(pwd)/AGENTS.md" ".claude/rules/engineering.md"
 ```
 
-### Option B — Reference specific tools
+### Option B — Add the pre-flight tool
 
-Copy the tools you need into your repo's `tools/` directory. Each tool is self-contained — it has its own `check.py`, `test_check.py`, and `README.md`.
+Copy `doc_path_audit` into your repo and add one line to your `CLAUDE.md`:
 
-For Python projects:
 ```bash
 cp -r tools/python/doc_path_audit your-project/tools/
-cp -r tools/python/_template your-project/tools/
+cp -r tools/python/_template your-project/tools/   # for building more tools later
 ```
 
-For JS/TS projects:
-```bash
-cp -r tools/js/stream_verdict your-project/tools/
+Add to your `CLAUDE.md`:
+```
+## Session-open pre-flight
+Run `python -m tools.doc_path_audit.check --json` before any action.
+Read data.missing — any .py/.ts/.md entry is a stale path claim.
 ```
 
-### Option C — Start from the template
+### Option C — Build your own tools from the template
 
-To build a new Rule-0 tool for your own decision-tree tasks:
+For every recurring decision-tree task in your project, build a tool:
 
 ```bash
 cp -r tools/python/_template your-project/tools/your_tool_name
 ```
 
-Then:
 1. Write tests first in `test_check.py` — run them, watch them fail
 2. Implement `run()` in `check.py` until tests pass
 3. Update `README.md` with the descriptor and `does_not_measure` section
 4. Add a row to your `tools/README.md` registry
-
-### Using the pre-flight audit
-
-Add this to your session-opening workflow (or wire it into a CLAUDE.md instruction):
-
-```bash
-# Python project
-python -m tools.doc_path_audit.check --json
-
-# Read only data.missing — entries ending in .py/.ts/.md are stale claims
-```
 
 ---
 
 ## What's in this repo
 
 ```
-AGENTS.md                          # The rules — drop this into .claude/rules/
+AGENTS.md                     # The rules — drop into .claude/rules/
 tools/
   python/
-    _template/                     # Copy this to build a new Python tool
-      check.py                     # Envelope + --json CLI skeleton
-      test_check.py                # Tests-first skeleton
-    doc_path_audit/                # Pre-flight: surface stale path claims in docs
-      check.py
-      test_check.py
-      README.md
-    sse_contract_check/            # Reference implementation: SSE event drift detection
-      check.py
-      test_check.py
-      README.md
-      FINDINGS.md                  # The scope-bug postmortem — read this
-  js/
-    stream_verdict/                # Branch-the-future proof: renderer fork adjudication
-      verdict.mjs
-      test_verdict.mjs
+    _template/                # Copy this to build a new tool
+    doc_path_audit/           # Pre-flight: surface stale path claims in docs
 examples/
-  purangpt-session.md             # Annotated real session showing the patterns in action
+  purangpt-session.md         # Annotated real session showing each pattern
 ```
 
 ---
 
 ## Why this works
 
-The methodology was developed and proven on [PuranGPT](https://github.com/prashantpandey-creator/purangpt) — a production RAG system for querying Hindu sacred texts. The problems it solves are real:
+The methodology was developed on [PuranGPT](https://github.com/prashantpandey-creator/purangpt). The problems it solves are real, documented in [`examples/purangpt-session.md`](examples/purangpt-session.md):
 
-- `sse_contract_check` caught a genuine false-negative drift (the checker was scoped to `event_gen` alone; `deep_research` also emits into the same contract — multi-scope fix surfaced by the tests)
-- `doc_path_audit` would have caught the `engine/query_engine.py` stale reference before it corrupted a session's map
-- `stream_verdict` independently reproduced a 3-hour, 4-commit revert decision in milliseconds
+- A stale `engine/query_engine.py` reference in docs would have corrupted a session's map — `doc_path_audit` catches it before any action
+- An SSE contract drift went undetected because the checker was scoped to one generator — the scope trap, documented in the example
+- A 3-hour, 4-commit revert loop on a streaming renderer was adjudicated by a verdict script in milliseconds — Branch-the-future proven on real git history
 
-The template and envelope shape are compatible with MCP servers, Anthropic/OpenAI tool calling, and LangGraph — retiring a sub-agent is a drop-in swap.
+The envelope shape (`{success, data, metadata, errors}`) is compatible with MCP servers, Anthropic/OpenAI tool calling, and LangGraph — retiring a sub-agent is a drop-in swap.
 
 ---
 
