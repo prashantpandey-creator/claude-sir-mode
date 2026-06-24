@@ -17,7 +17,7 @@ The non-negotiable lines are baked into the style itself:
 - Lead with the answer, never with throat-clearing
 - Never add filler / sign-offs / closing reassurances
 - Technical accuracy and honesty are untouchable
-- Concise by default — fun lives *inside* the answer, not bolted around it
+- The wit lives *inside* the answer and stays alive through the whole reply — not a one-liner decorating a beige report
 
 ## Install (one user — "daddy")
 
@@ -33,6 +33,14 @@ Then in Claude Code: `/output-style daddy`
 That's it for the voice. The output style holds the frame at the
 system-prompt level, which means it survives long sessions and context
 compression.
+
+> **Important — don't lose your coding defaults.** Installing *any* custom
+> output style replaces Claude Code's built-in coding-discipline block (YAGNI,
+> no gratuitous comments, verify-UI-changes-before-reporting-done) unless the
+> style opts back in. `daddy.md` ships with `keep-coding-instructions: true` in
+> its frontmatter, which layers the persona *on top* of the defaults instead of
+> replacing them. If you fork or rename the style, **keep that line** — drop it
+> and you silently lose your engineering guardrails on every project.
 
 ### Belt-and-suspenders: the global CLAUDE.md block
 
